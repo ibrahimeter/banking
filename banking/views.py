@@ -4,6 +4,7 @@ from django.http import JsonResponse
 from .models import BankAccount
 from .models import serialize_bank_account
 from django.views.decorators.csrf import csrf_exempt
+import json
 
 @csrf_exempt
 # Create your views here.
@@ -24,3 +25,39 @@ def my_accounts(request):
     for bank_account in bank_accounts:
         list_my_accounts.append(serialize_bank_account(bank_account))
     return JsonResponse({"my accounts":list_my_accounts})
+
+@csrf_exempt
+def deposit(request):
+    if not is_authenticated(request):
+        return JsonResponse({"message": "you are not authenticated"})
+    if request.method =="POST":
+        data = json.loads(request.body)
+        account = data.get("account")
+        amount = data.get("amount")
+        account_obj = BankAccount.objects.get(user= request.user, bank_account=account)
+        account_obj.balance +=amount
+        account_obj.save()
+        return JsonResponse({"message":"success",
+                            "account":serialize_bank_account(account_obj)
+                            })  
+
+@csrf_exempt
+def transfer(request):
+    if not is_authenticated(request):
+        return JsonResponse({"message": "you are not authenticated"})
+    if request.method == "POST":
+        data = json.loads(request.body)
+        src_account = data.get("src_account")
+        dest_account= data.get("dest_account")
+        amount = data.get("amount")
+        src_account_obj = BankAccount.objects.get(user= request.user, bank_account=src_account)
+        dest_account_obj = BankAccount.objects.get(bank_account= dest_account)
+        if amount >src_account_obj.balance:
+            return JsonResponse({"message": "try to transfer less than this amount"})
+        src_account_obj.balance -= amount
+        src_account_obj.save()
+        dest_account_obj.balance += amount
+        dest_account_obj.save()
+        return JsonResponse({"message": "transfer success."})
+
+
