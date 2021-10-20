@@ -1,8 +1,8 @@
 from authentication.utils import is_authenticated
 from django.shortcuts import render
 from django.http import JsonResponse
-from .models import BankAccount
 from .models import serialize_bank_account
+from .models import BankAccount
 from django.views.decorators.csrf import csrf_exempt
 import json
 
@@ -52,12 +52,11 @@ def transfer(request):
         amount = data.get("amount")
         src_account_obj = BankAccount.objects.get(user= request.user, bank_account=src_account)
         dest_account_obj = BankAccount.objects.get(bank_account= dest_account)
-        if amount >src_account_obj.balance:
-            return JsonResponse({"message": "try to transfer less than this amount"})
-        src_account_obj.balance -= amount
-        src_account_obj.save()
-        dest_account_obj.balance += amount
-        dest_account_obj.save()
+        try:
+            src_account_obj.transfer(dest_account_obj, amount)
+        except:
+            return JsonResponse({"message":"you trying to send an amount that you do not have"})
+        
         return JsonResponse({"message": "transfer success."})
 
 
